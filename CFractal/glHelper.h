@@ -10,6 +10,10 @@ struct Texture
 
 void drawTestObject();
 void drawRect(Vector2d topLeft, Vector2d bottomRight,  Color color);
+
 Texture createTexture(int width, int height, uint8_t * data);
+
 void drawTexture(Vector2d topLeft, Vector2d bottomRight, Texture texture);
+void drawTexture(Vector2d topLeft, Vector2d bottomRight, Vector2d uv1, Vector2d uv2, Texture texture);
+
 void setOrtho(int width, int height);

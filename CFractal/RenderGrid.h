@@ -3,11 +3,10 @@
 #include <string>
 #include "Mandel.h"
 #include "helper.h"
-#include "glHelper.h";
+#include "glHelper.h"
+#include "RenderQueue.h"
 
-class RenderBlock;
 class RenderGrid;
-class RenderQue;
 class Viewport;
 
 // Node of a quad tree.
@@ -24,10 +23,6 @@ private:
 	double oldestTap;
 
 	bool isInView();	
-
-	void drawBlockHack(int atX, int atY, double scale, bool debug);
-
-	void RenderNode::drawBlock(int atX, int atY, double scale, bool debug);
 	
 public:
 
@@ -86,17 +81,6 @@ public:
 
 };
 
-
-class RenderQue
-{
-private:
-	MandelbrotSolver solver;
-public:
-	void addJob(RenderBlock *job);
-	RenderQue();
-	~RenderQue();
-};
-
 class RenderGrid
 {
 private:
@@ -116,7 +100,7 @@ public:
 	// pageManager
 	Viewport *viewport;
 
-	RenderQue renderQue;
+	RenderQueue *renderQueue;
 
 	// Root node of our quad tree.
 	RenderNode* root;
@@ -125,47 +109,6 @@ public:
 	RenderBlock* getBlock(Vector2d location, int depth);
 	void createBlock(Vector2d location, int depth);	
 	void prepare(int depth);	
-};
-
-enum RenderBlockStatus {
-	// No rendered fractal data, page will be null.
-	rsEMPTY, 
-	// Block is in que to be rendered.
-	rsINQUE,
-	// Block is currently being rendered[renderPage allocated]
-	rsRENDERING,
-	// Block has been rendered but is not uploaded to a texture
-	rsRENDERED,
-	// Block is currently being uploaded to video card[renderPage.texture initilized]
-	rsUPLOADING,
-	// Block has been uploaded to video card and pages texture is active
-	rsUPLOADED
-};
-
-class RenderBlock
-{
-private:
-public:
-
-	Vector2d offset;
-	double scale;	
-
-	// If block contains all the same color then this will be true.
-	bool isTrivial = false;
-
-	FractalBlock data;
-
-	Texture texture;
-
-	RenderBlockStatus status;
-	int priority;
-	RenderBlockStatus getStatus();		
-	RenderBlock(Vector2d position, double scale);
-
-	RenderBlock();
-	~RenderBlock();
-
-	std::string toString();
 };
 
 // Used for mapping between a translated and scaled viewport to screen co-ords.

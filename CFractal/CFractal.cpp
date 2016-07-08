@@ -64,7 +64,7 @@ void update();
 void init()
 {
 	//  Set the frame buffer clear color to black. 
-	glClearColor(0.0, 0.0, 0.0, 0.0);
+	glClearColor(0.0, 0.0, 0.5, 0.0);
 
 	viewport = Viewport();
 	viewport.size = Vector2d(VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
@@ -129,7 +129,7 @@ void display(void)
 	glutPostRedisplay();
 
 	// Wait a little while
-	std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
 
@@ -155,7 +155,7 @@ void drawFractalGrid()
 	double startTime;
 
 	startTime = time();
-	renderGrid->prepare(layer + 1);
+	renderGrid->prepare(layer); 
 	//TRACE("Took " + floatToStr(time() - startTime) + " seconds to prep." + "[" + intToStr(ticker) + "]");
 
 	renderGrid->targetDepth = layer;
@@ -171,8 +171,6 @@ void drawFractalGrid()
 void handleKeyboardInput(unsigned char key, int x, int y)
 {
 	double speed = elapsed * 10;
-
-	TRACE("Input");
 
 	switch (key) {
 	case 'w': viewport.offset.y -= 1.0 / viewport.scale * 100 * speed;
@@ -195,6 +193,9 @@ void update()
 	elapsed = time() - lastTime;
 	lastTime = time();
 	ticker++;		
+
+	// handle updates.
+	renderGrid->renderQueue->update();
 }
 
 

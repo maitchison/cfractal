@@ -149,7 +149,9 @@
     <ClInclude Include="CFractal.h" />
     <ClInclude Include="glHelper.h" />
     <ClInclude Include="helper.h" />
+    <ClInclude Include="RenderBlock.h" />
     <ClInclude Include="RenderGrid.h" />
+    <ClInclude Include="RenderQueue.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
@@ -159,7 +161,9 @@
     <ClCompile Include="glHelper.cpp" />
     <ClCompile Include="helper.cpp" />
     <ClCompile Include="Mandel.cpp" />
+    <ClCompile Include="RenderBlock.cpp" />
     <ClCompile Include="RenderGrid.cpp" />
+    <ClCompile Include="RenderQueue.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

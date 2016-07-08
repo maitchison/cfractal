@@ -6,20 +6,20 @@
 #include "Mandel.h"
 #include "xmmintrin.h"
 
-FractalBlock MandelbrotSolver::CreateBlock(float x, float y, float scale)
+FractalBlock MandelbrotSolver::CreateBlock(double x, double y, double scale)
 	{
 		FractalBlock result;
 		result.width = block_size;
 		result.height = block_size;
-		result.x_in = new float[block_size*block_size];
-		result.y_in = new float[block_size*block_size];
+		result.x_in = new double[block_size*block_size];
+		result.y_in = new double[block_size*block_size];
 		result.values_out = new int[block_size*block_size];
 		for (int xlp = 0; xlp < block_size; xlp++)
 		{
 			for (int ylp = 0; ylp < block_size; ylp++)
 			{
-				result.x_in[xlp + ylp * block_size] = x + (float)xlp * scale;
-				result.y_in[xlp + ylp * block_size] = y + (float)ylp * scale;
+				result.x_in[xlp + ylp * block_size] = x + (double)xlp * scale;
+				result.y_in[xlp + ylp * block_size] = y + (double)ylp * scale;
 			}
 		}
 		return result;
@@ -43,7 +43,7 @@ void MandelbrotSolver::simple_solve(FractalBlock block)
 			double zi = 0;
 
 			int it = 0;
-			for (int j = 0; j < 1000; j++)
+			for (int j = 0; j < itterations; j++)
 			{
 				it ++;
 				// z = z*z + c
@@ -64,7 +64,7 @@ void MandelbrotSolver::simple_solve(FractalBlock block)
 	}
 
 /// SIMD solver, uses SSE.
-void MandelbrotSolver::intrinsic_solve(FractalBlock block)
+void MandelbrotSolver::intrinsic_solve_32(FractalBlock block)
 {	
 
 	int length = block.width * block.height;

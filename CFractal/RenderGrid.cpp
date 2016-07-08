@@ -136,7 +136,7 @@ void RenderNode::addToRenderQue(int priority = 0)
 		parentNode->addToRenderQue(priority * 2);
 
 	renderBlock->priority = priority;
-	parentGrid->renderQue.addJob(renderBlock);
+	parentGrid->renderQueue->addJob(renderBlock);
 }
 
 // Returns if any part of this node is in view or not.
@@ -144,7 +144,7 @@ void RenderNode::addToRenderQue(int priority = 0)
 bool RenderNode::isInView()
 {		
 	// Old circle method... quiet fast but not always 100 % correct.
-	double viewRadius = 300.0;
+	double viewRadius = 512.0;
 	double halfSize = getSize() / 2;
 	double blockRadius = sqrt(2.0 * halfSize * halfSize) * parentGrid->viewport->scale * 16;
 	double dst = distanceFromCenterOfScreen();
@@ -211,15 +211,15 @@ RenderGrid::RenderGrid(Viewport *viewport)
 	blockSize = 64;
 	root = new RenderNode(this, NULL, Vector2d(0, 0), 0);
 	//pageManager = ...
-	renderQue = RenderQue();
+	renderQueue = new RenderQueue();
 	this->viewport = viewport;
 }
 
 
 RenderGrid::~RenderGrid()
 {
-	delete root;
-	//delete renderQue;
+	delete root;	
+	delete renderQueue;
 }
 
 // Returns node at given location.
@@ -280,147 +280,6 @@ void RenderNode::drawDebugBlock(int atX, int atY, double scale, COLORREF color)
 	drawRect(destination, Vector2d(atX, atY), Vector2d(atX + scaledSize, atY + scaledSize), color);
 }
 
-// no idea why this doesn't work???
-void RenderNode::drawBlockFast(int atX, int atY, double scale = 1.0, bool debug = false)
-{
-	if (!parentGrid->viewport->target)
-		return;
-
-	auto destination = parentGrid->viewport->target;
-	auto block = renderBlock->data;
-
-	int scaledSize = (int)(64 * scale);
-	
-	uint8_t bits[128 * 128 * 4];
-
-	BITMAPINFO bitmapInfo = BITMAPINFO();
-	ZeroMemory(&bitmapInfo, sizeof(BITMAPINFO));
-	bitmapInfo.bmiHeader.biSize = sizeof(bitmapInfo.bmiHeader);
-	bitmapInfo.bmiHeader.biBitCount = 24;
-	bitmapInfo.bmiHeader.biHeight = -1;
-	bitmapInfo.bmiHeader.biWidth = 256;
-	bitmapInfo.bmiHeader.biPlanes = 1;
-	bitmapInfo.bmiHeader.biCompression = BI_RGB;
-	bitmapInfo.bmiHeader.biSizeImage = 256 * 1 * 3;
-	
-	for (int ylp = 0; ylp < scaledSize; ylp++)
-	{
-		int ypos = (int)((double)ylp / scaledSize * 64);
-		if ((atY + ylp) < 10 || (atY + ylp) > parentGrid->viewport->size.y - 10)
-			continue;
-
-		for (int xlp = 0; xlp < scaledSize; xlp++)
-		{
-			int xpos = (int)((double)xlp / scaledSize * 64);
-
-			int it = block.values_out[xpos + ypos * 64];
-
-			bits[xlp * 4 + 0] = it / 4;
-			bits[xlp * 4 + 1] = it / 4;
-			bits[xlp * 4 + 2] = 128;
-		}
-		
-	}
-
-	//auto result = SetDIBits(NULL, destination, atY + ylp, 1, bits, &bitmapInfo, DIB_RGB_COLORS);
-	auto result = SetDIBits(NULL, destination, 0, 64, bits, &bitmapInfo, DIB_RGB_COLORS);
-	TRACE(result);
-
-}
-
-// Draws block to current viewport at given screen co-rds and scale.
-// Just hacked a bit to make it faster.  Not sure why I can't move data to a bitmap more easily??
-void RenderNode::drawBlockHack(int atX, int atY, double scale = 1.0, bool debug = false)
-{
-	if (!parentGrid->viewport->target)
-		return;
-
-	auto destination = parentGrid->viewport->target;
-	auto block = renderBlock->data;
-
-	int scaledSize = (int)(64 * scale);
-
-	COLORREF color = RGB(255, 0, 0);
-		
-	// this is quite slow, some kind of blit would be much faster	
-	
-	for (int ylp = 0; ylp < scaledSize; ylp++)
-	{
-		int ypos = (int)((double)ylp / scaledSize * 64);
-		if ((atY + ylp) < 10 || (atY + ylp) > parentGrid->viewport->size.y - 10)
-			continue;
-
-		int lastIt = -1;
-		int runCount = 0;
-
-		for (int xlp = 0; xlp < scaledSize; xlp++)
-		{
-			if ((atX + xlp) < 10 || (atX + xlp) > parentGrid->viewport->size.x - 10)
-				continue;
-
-			int xpos = (int)((double)xlp / scaledSize * 64);
-
-			int it = block.values_out[xpos + ypos * 64];
-
-				runCount++;
-			
-				if ((it != lastIt) || (xlp == scaledSize -1))
-			{
-				color = RGB(lastIt / 4, lastIt / 4, 128);				
-				drawRect(destination, Vector2d(atX + xlp - runCount, atY + ylp), Vector2d(atX + xlp+1, atY + ylp + 1), color);
-				runCount = 0;
-			}
-			lastIt = it;
-		}
-	} 	
-
-}
-
-// Draws block to current viewport at given screen co-rds and scale.
-void RenderNode::drawBlock(int atX, int atY, double scale = 1.0, bool debug = false)
-{
-	if (!parentGrid->viewport->target)
-		return;
-
-	auto destination = parentGrid->viewport->target;
-	auto block = renderBlock->data;
-
-	int scaledSize = (int)(64 * scale);
-
-	// Draws block to bitmap at given location.		
-	HDC newdc = CreateCompatibleDC(NULL);	
-	SelectObject(newdc, destination);
-
-	// this is quite slow, some kind of blit would be much faster	
-	COLORREF color = RGB(255, 0, 0);
-	for (int ylp = 0; ylp < scaledSize; ylp++)
-	{
-		int ypos = (int)((double)ylp / scaledSize * 64);
-		if ((atY + ylp) < 10 || (atY + ylp) > parentGrid->viewport->size.y - 10)
-			continue;
-
-		for (int xlp = 0; xlp < scaledSize; xlp++)
-		{				
-			if ((atX + xlp) < 10 || (atX + xlp) > parentGrid->viewport->size.x - 10)
-				continue;
-			
-			int xpos = (int)((double)xlp / scaledSize * 64);
-
-			int it = block.values_out[xpos + ypos * 64];
-			color = RGB(it / 4, it / 4, 128);
-
-			if (debug && ((xlp == 0) && (ylp == 0)))
-				color = RGB(255, 0, 0);
-			
-			SetPixel(newdc, atX + xlp, atY + ylp, color);
-		}
-	}
-
-	SelectObject(newdc, NULL);
-	DeleteDC(newdc);	
-
-}
-
 void RenderNode::draw()
 {
 	auto fractal_topLeft = Vector2d(center.x - getSize() / 2, center.y - getSize() / 2);
@@ -440,22 +299,44 @@ void RenderNode::draw()
 		drawTexture(target_topLeft, target_bottomRight, renderBlock->texture);
 	}
 	else {
-		// nothing for the moment... draw a red block to indicate loading in the future.
-		drawRect(target_topLeft, target_bottomRight, Color(255, 0, 0));		
+
+		// look up in the chain for a rendered block
+		int blocksUpToCheck = 10;
+		auto node = this;
+		RenderNode *foundNode = NULL;
+		while (blocksUpToCheck > 0 && node->parentNode)
+		{
+			node = node->parentNode;
+			if (node->renderBlock && node->renderBlock->status == rsUPLOADED) {
+				foundNode = node;
+				break;
+			}
+		}
+
+		if (foundNode) {
+			// use this parent node instead.
+			double sectionWidth = this->getSize() / foundNode->getSize();
+			double sectionHeight = this->getSize() / foundNode->getSize();
+			double sectionX = (foundNode->center.x - this->center.x) / foundNode->getSize() - (sectionWidth / 2);
+			double sectionY = (foundNode->center.y - this->center.y) / foundNode->getSize() - (sectionHeight / 2);
+			//auto uv1 = Vector2d(foundNode->getTopLeft().x - this->getTopLeft().x / foundNode->getSize(), foundNode->getTopLeft().y - this->getTopLeft().y / foundNode->getSize());
+			//auto uv2 = Vector2d(foundNode->getTopLeft().x - this->getBottomRight().x / foundNode->getSize(), foundNode->getTopLeft().y - this->getBottomRight().y / foundNode->getSize());
+
+			//TRACE(uv1.toString());
+
+			while (sectionX < 0) sectionX += 1;
+			while (sectionY < 0) sectionY += 1;
+			while (sectionX > 1) sectionX -= 1;
+			while (sectionY > 1) sectionY -= 1;			
+
+			drawTexture(target_topLeft, target_bottomRight, Vector2d(sectionX,sectionY), Vector2d(sectionX + sectionWidth, sectionY + sectionHeight), foundNode->renderBlock->texture);
+			//drawTexture(target_topLeft, target_bottomRight, uv1, uv2, foundNode->renderBlock->texture);
+		}
+		else {
+			// nothing for the moment... draw a colored block to indicate loading in the future.
+			drawRect(target_topLeft, target_bottomRight, Color(255, 255, 0));
+		}
 	}
-
-	// debug draw
-	/*
-	double halfSize = getSize() / 2;
-	double blockRadius = sqrt(2.0 * halfSize * halfSize) * parentGrid->viewport->scale * 16;
-
-	int dstColor = (int)(distanceFromCenterOfScreen() - blockRadius);
-
-	dstColor = dstColor < 255 ? dstColor : 255;
-	dstColor = dstColor < 0 ? 0 : dstColor;
-	drawDebugBlock(target_topLeft.x, target_topLeft.y, 16 * size / target_size, RGB(dstColor,100,100));
-	*/
-
 }
 
 // Returns distance of block from center of screen.
@@ -517,80 +398,6 @@ void RenderGrid::prepare(int depth)
 	if (depth < 1) depth = 1;
 	root->recursivePrep(depth);
 }
-
-///  ------------------------------------------------------------------
-///  RenderQue
-///  ------------------------------------------------------------------
-
-void RenderQue::addJob(RenderBlock *block)
-{
-	block->status = rsINQUE;
-
-	// OK, so just for new we will render on the spot :)	
-	auto _block = solver.CreateBlock(block->offset.x, block->offset.y, (1.0 / block->scale) /64.0);
-	solver.Solve(_block);
-
-	block->data = _block;
-	
-	block->status = rsRENDERED;
-
-	// Map colors
-	auto colors = new uint8_t[64 * 64 * 3];
-	for (int i = 0; i < 64 * 64 * 3; i++)
-	{
-		colors[i] = block->data.values_out[i / 3] / 4;		
-	}
-
-	// Upload
-	TRACE("Upload " + block->toString());
-	block->texture = createTexture(64, 64, colors);
-
-	delete colors;
-
-	block->status = rsUPLOADED;
-
-}
-
-// Create a render que.
-RenderQue::RenderQue()
-{
-	solver = MandelbrotSolver();
-}
-
-RenderQue::~RenderQue()
-{
-	// nothing to do.
-}
-
-///  ------------------------------------------------------------------
-///  RenderBlock
-///  ------------------------------------------------------------------
-
-RenderBlockStatus RenderBlock::getStatus()
-{
-	return status;
-}
-	
-RenderBlock::RenderBlock(Vector2d position, double scale)
-{
-	this->offset = position;
-	this->scale = scale;
-	status = rsEMPTY;
-}
-
-RenderBlock::RenderBlock()
-{
-}
-
-RenderBlock::~RenderBlock()
-{
-}
-
-std::string RenderBlock::toString()
-{
-	return offset.toString() + " : " + floatToStr(scale);
-}
-
 
 ///  ------------------------------------------------------------------
 ///  Viewport

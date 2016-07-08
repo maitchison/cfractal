@@ -4,8 +4,8 @@
 struct FractalBlock {
 	int width;
 	int height;
-	float *x_in;
-	float *y_in;
+	double *x_in;
+	double *y_in;
 	int *values_out;	
 };
 
@@ -24,16 +24,17 @@ class MandelbrotSolver {
 private:
 	int block_size = 64;
 	float threshold = 2.0f;
+	int itterations = 2048;
 	
 	/// Simple mandelbrot solver, just written in c++
 	void simple_solve(FractalBlock block);	
-	void intrinsic_solve(FractalBlock block);	
+	void intrinsic_solve_32(FractalBlock block);	
 	void SSE_solve(FractalBlock block);
 
 public:
 	// Creates a fractal block with locations to be rendered. 
-	FractalBlock CreateBlock(float x, float y, float scale);
+	FractalBlock CreateBlock(double x, double y, double scale);
 
-	void Solve(FractalBlock block) { intrinsic_solve(block); }
+	void Solve(FractalBlock block) { intrinsic_solve_32(block); }
 
 };

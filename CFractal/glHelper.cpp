@@ -31,8 +31,7 @@ void setOrtho(int width, int height)
  * Draws a solid color block on the screen
  */
 void drawRect(Vector2d topLeft, Vector2d bottomRight,  Color color)
-{
-	
+{	
 	glColor3f(color.r / 255.0, color.g / 255.0, color.b / 255.0);
 	glBegin(GL_TRIANGLES);
 	glVertex3f(topLeft.x, topLeft.y, 0.0);
@@ -57,7 +56,8 @@ Texture createTexture(int width, int height, uint8_t *data)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	//gluBuild2DMipmaps(GL_TEXTURE_2D, 3, width, height, GL_RGB, GL_UNSIGNED_BYTE, data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);	
 
 	auto error = glGetError();
 	if (error) {
@@ -74,17 +74,27 @@ Texture createTexture(int width, int height, uint8_t *data)
  */
 void drawTexture(Vector2d topLeft, Vector2d bottomRight, Texture texture)
 {
+	drawTexture(topLeft, bottomRight, Vector2d(0, 0), Vector2d(1, 1), texture);	
+}
+
+/*
+* Draws a texture on the screen
+*/
+void drawTexture(Vector2d topLeft, Vector2d bottomRight, Vector2d uv1, Vector2d uv2, Texture texture)
+{
 	glBindTexture(GL_TEXTURE_2D, texture.id);
+
+	glColor3f(1.0, 1.0, 1.0);
 
 	glEnable(GL_TEXTURE_2D);
 	glBegin(GL_QUADS);
 
-		glTexCoord2f(0.0, 0.0); glVertex3f(topLeft.x,		topLeft.y,		0.0);
-		glTexCoord2f(1.0, 0.0); glVertex3f(bottomRight.x,	topLeft.y,		0.0);
-		glTexCoord2f(1.0, 1.0); glVertex3f(bottomRight.x,	bottomRight.y,	0.0);
-		glTexCoord2f(0.0, 1.0); glVertex3f(topLeft.x,		bottomRight.y,	0.0);
-		
-	glEnd();	
+	glTexCoord2f(uv1.x, uv1.y); glVertex3f(topLeft.x, topLeft.y, 0.0);
+	glTexCoord2f(uv2.x, uv1.y); glVertex3f(bottomRight.x, topLeft.y, 0.0);
+	glTexCoord2f(uv2.x, uv2.y); glVertex3f(bottomRight.x, bottomRight.y, 0.0);
+	glTexCoord2f(uv1.x, uv2.y); glVertex3f(topLeft.x, bottomRight.y, 0.0);
+
+	glEnd();
 
 	auto error = glGetError();
 	if (error) {
