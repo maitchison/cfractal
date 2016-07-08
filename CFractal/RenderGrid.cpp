@@ -2,6 +2,7 @@
 #include "RenderGrid.h"
 #include <math.h>
 #include "helper.h"
+#include "glHelper.h"
 
 
 ///  ------------------------------------------------------------------
@@ -429,16 +430,18 @@ void RenderNode::draw()
 	double size = getSize();
 	double target_size = 64.0 / parentGrid->viewport->scale;
 
-	auto target_topLeft = parentGrid->viewport->toScreen(fractal_topLeft);
+	auto target_topLeft = parentGrid->viewport->toScreen(fractal_topLeft);	
+	auto target_bottomRight = Vector2d(target_topLeft.x + 64.0 * 16.0 * size / target_size, target_topLeft.y + 64.0 * 16.0 * size / target_size);
+
 
 	// for the moment just draw this node, and don't worry about scanning upwards for parent nodes.
-	if (renderBlock->status == rsRENDERED)
-	{
-		drawBlockHack(target_topLeft.x, target_topLeft.y, 16 * size / target_size, true);
+	if (renderBlock->status == rsUPLOADED)
+	{	
+		drawTexture(target_topLeft, target_bottomRight, renderBlock->texture);
 	}
 	else {
 		// nothing for the moment... draw a red block to indicate loading in the future.
-		drawDebugBlock(target_topLeft.x, target_topLeft.y, 16 * size / target_size, RGB(0,255,0));
+		drawRect(target_topLeft, target_bottomRight, Color(255, 0, 0));		
 	}
 
 	// debug draw
@@ -523,8 +526,6 @@ void RenderQue::addJob(RenderBlock *block)
 {
 	block->status = rsINQUE;
 
-	//TRACE("Rendering block "+block->toString());
-
 	// OK, so just for new we will render on the spot :)	
 	auto _block = solver.CreateBlock(block->offset.x, block->offset.y, (1.0 / block->scale) /64.0);
 	solver.Solve(_block);
@@ -532,6 +533,22 @@ void RenderQue::addJob(RenderBlock *block)
 	block->data = _block;
 	
 	block->status = rsRENDERED;
+
+	// Map colors
+	auto colors = new uint8_t[64 * 64 * 3];
+	for (int i = 0; i < 64 * 64 * 3; i++)
+	{
+		colors[i] = block->data.values_out[i / 3] / 4;		
+	}
+
+	// Upload
+	TRACE("Upload " + block->toString());
+	block->texture = createTexture(64, 64, colors);
+
+	delete colors;
+
+	block->status = rsUPLOADED;
+
 }
 
 // Create a render que.
@@ -559,6 +576,10 @@ RenderBlock::RenderBlock(Vector2d position, double scale)
 	this->offset = position;
 	this->scale = scale;
 	status = rsEMPTY;
+}
+
+RenderBlock::RenderBlock()
+{
 }
 
 RenderBlock::~RenderBlock()

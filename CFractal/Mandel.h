@@ -6,7 +6,7 @@ struct FractalBlock {
 	int height;
 	float *x_in;
 	float *y_in;
-	int *values_out;
+	int *values_out;	
 };
 
 /// A block within the fractal that has 4 children blocks (that may or may not be rendered). 

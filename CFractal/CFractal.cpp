@@ -11,21 +11,14 @@
 #include "RenderGrid.h"
 #include "Windows.h"
 #include "Winuser.h"
+#include "glHelper.h"
+#include <gl/freeglut.h>
+#include <chrono>
+#include <thread>
 
 #define MAX_LOADSTRING 100
 
 using namespace std;
-
-// Global Variables:
-HINSTANCE hInst;                                // current instance
-WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
-WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
-
-// Forward declarations of functions included in this code module:
-ATOM                MyRegisterClass(HINSTANCE hInstance);
-BOOL                InitInstance(HINSTANCE, int);
-LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 MandelbrotSolver *solver = NULL;
 
@@ -46,51 +39,154 @@ int VIEWPORT_WIDTH = 1440;
 int VIEWPORT_HEIGHT = 1024;
 
 
-// Inititialize our fractal
-void setupFractal()
+void init();
+void display(void);
+void centerOnScreen();
+
+//  define the window position on screen
+int window_x;
+int window_y;
+
+//  variables representing the window size
+int window_width = 1024;
+int window_height = 768;
+
+//  variable representing the window title
+char *window_title = "Sample OpenGL FreeGlut App";
+
+void drawFractalGrid();
+void handleKeyboardInput(unsigned char key, int x, int y);
+void update();
+
+//-------------------------------------------------------------------------
+//  Set OpenGL program initial state.
+//-------------------------------------------------------------------------
+void init()
 {
-	TRACE("Initializing Fractal");
-	solver = new MandelbrotSolver();
+	//  Set the frame buffer clear color to black. 
+	glClearColor(0.0, 0.0, 0.0, 0.0);
 
 	viewport = Viewport();
 	viewport.size = Vector2d(VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+	setOrtho(VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
 	renderGrid = new RenderGrid(&viewport);
+
+	solver = new MandelbrotSolver();
+
+	TRACE("OpenGL initialized to " + intToStr(VIEWPORT_WIDTH) + "x" + intToStr(VIEWPORT_WIDTH));
+}
+
+//-------------------------------------------------------------------------
+//  Program Main method.
+//-------------------------------------------------------------------------
+void main(int argc, char **argv)
+{
+	TRACE("Initializing cFractal");
+	//  Connect to the windowing system + create a window
+	//  with the specified dimensions and position
+	//  + set the display mode + specify the window title.
+	glutInit(&argc, argv);
+	centerOnScreen();
+	glutInitWindowSize(window_width, window_height);
+	glutInitWindowPosition(window_x, window_y);
+	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
+	glutCreateWindow(window_title);
+
+	//  Set OpenGL program initial state.
+	init();
+
+	// Set the callback functions
+	glutDisplayFunc(display);
+
+	// Set input callback function
+	glutKeyboardFunc(handleKeyboardInput);
+
+	//  Start GLUT event processing loop
+	glutMainLoop();
+}
+
+
+
+//-------------------------------------------------------------------------
+//  This function is passed to glutDisplayFunc in order to display 
+//  OpenGL contents on the window.
+//-------------------------------------------------------------------------
+void display(void)
+{
+	// Clear the window or more specifically the frame buffer...
+	// This happens by replacing all the contents of the frame
+	// buffer by the clear color (black in our case)
+	glClear(GL_COLOR_BUFFER_BIT);	
+
+	update();
+
+	drawFractalGrid();
+
+	// Swap contents of backward and forward frame buffers.
+	glutSwapBuffers();
+
+	// Request the next frame.
+	glutPostRedisplay();
+
+	// Wait a little while
+	std::this_thread::sleep_for(std::chrono::milliseconds(1));
+}
+
+
+//-------------------------------------------------------------------------
+//  This function sets the window x and y coordinates
+//  such that the window becomes centered
+//-------------------------------------------------------------------------
+void centerOnScreen()
+{
+	window_x = (glutGet(GLUT_SCREEN_WIDTH) - window_width) / 2;
+	window_y = (glutGet(GLUT_SCREEN_HEIGHT) - window_height) / 2;
 }
 	
 
-// Handle keyboard input such as wasd.
-void handleKeyboardInput()
+/*
+ * Draws the fractal grid using openGL.
+ */
+void drawFractalGrid()
 {
-	double speed = elapsed;
+	//drawRect(destination, Vector2d(0, 0), Vector2d(VIEWPORT_WIDTH, VIEWPORT_HEIGHT), RGB(0, 0, 0));
 
-	if (GetAsyncKeyState('W')) {
-		viewport.offset.y -= 1/viewport.scale * 100 * speed;
-		dirty = true;
-	}
-		
-	if (GetAsyncKeyState('S')) {
-		viewport.offset.y += 1/viewport.scale * 100 * speed;
-		dirty = true;
-	}
-	if (GetAsyncKeyState('A')) {
-		viewport.offset.x -= 1/viewport.scale * 100 * speed;
-		dirty = true;
-	}
-	if (GetAsyncKeyState('D')) {
-		viewport.offset.x += 1/viewport.scale * 100 * speed;
-		dirty = true;
-	}	
-	if (GetAsyncKeyState('Q')) {
-		viewport.scale *= 1.1;
-		//TRACE(viewport.scale);
-		dirty = true;
-	}
+	int layer = (int)log2(viewport.scale);
+	double startTime;
 
-	if (GetAsyncKeyState('E')) {
-		viewport.scale *= 0.9;
-		dirty = true;
-	}
-		
+	startTime = time();
+	renderGrid->prepare(layer + 1);
+	//TRACE("Took " + floatToStr(time() - startTime) + " seconds to prep." + "[" + intToStr(ticker) + "]");
+
+	renderGrid->targetDepth = layer;
+
+	startTime = time();
+	renderGrid->root->recursiveDraw();
+	//TRACE("Took " + floatToStr(time() - startTime) + " seconds to draw." + "[" + intToStr(ticker) + "]");
+
+}
+
+
+// Handle keyboard input such as wasd.
+void handleKeyboardInput(unsigned char key, int x, int y)
+{
+	double speed = elapsed * 10;
+
+	TRACE("Input");
+
+	switch (key) {
+	case 'w': viewport.offset.y -= 1.0 / viewport.scale * 100 * speed;
+		break;
+	case 's': viewport.offset.y += 1.0 / viewport.scale * 100 * speed;
+		break;
+	case 'a': viewport.offset.x -= 1.0 / viewport.scale * 100 * speed;
+		break;
+	case 'd': viewport.offset.x += 1.0 / viewport.scale * 100 * speed;
+		break;
+	case 'q': viewport.scale *= 1.1;
+		break;
+	case 'e': viewport.scale /= 1.1;
+	}		
 }
 
 void update()
@@ -98,111 +194,12 @@ void update()
 	static double lastTime = time();
 	elapsed = time() - lastTime;
 	lastTime = time();
-	ticker++;	
-	handleKeyboardInput();
-}
-
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
-                     _In_opt_ HINSTANCE hPrevInstance,
-                     _In_ LPWSTR    lpCmdLine,
-                     _In_ int       nCmdShow)
-{
-    UNREFERENCED_PARAMETER(hPrevInstance);
-    UNREFERENCED_PARAMETER(lpCmdLine);
-
-    // TODO: Place code here.
-
-	setupFractal();
-	
-    // Initialize global strings
-    LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-    LoadStringW(hInstance, IDC_CFRACTAL, szWindowClass, MAX_LOADSTRING);
-    MyRegisterClass(hInstance);
-
-    // Perform application initialization:
-    if (!InitInstance (hInstance, nCmdShow))
-    {
-        return FALSE;
-    }
-
-    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_CFRACTAL));
-
-    MSG msg;
-
-    // Main message loop:
-    while (GetMessage(&msg, nullptr, 0, 0))
-    {
-		update();
-		InvalidateRect(msg.hwnd, NULL, NULL);
-        if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
-        {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-    }
-
-    return (int) msg.wParam;
-}
-
-
-
-//
-//  FUNCTION: MyRegisterClass()
-//
-//  PURPOSE: Registers the window class.
-//
-ATOM MyRegisterClass(HINSTANCE hInstance)
-{
-    WNDCLASSEXW wcex;
-
-    wcex.cbSize = sizeof(WNDCLASSEX);
-
-    wcex.style          = CS_HREDRAW | CS_VREDRAW;
-    wcex.lpfnWndProc    = WndProc;
-    wcex.cbClsExtra     = 0;
-    wcex.cbWndExtra     = 0;
-    wcex.hInstance      = hInstance;
-    wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_CFRACTAL));
-    wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-    wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_CFRACTAL);
-    wcex.lpszClassName  = szWindowClass;
-    wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
-
-    return RegisterClassExW(&wcex);
-}
-
-//
-//   FUNCTION: InitInstance(HINSTANCE, int)
-//
-//   PURPOSE: Saves instance handle and creates main window
-//
-//   COMMENTS:
-//
-//        In this function, we save the instance handle in a global variable and
-//        create and display the main program window.
-//
-BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
-{
-   hInst = hInstance; // Store instance handle in our global variable
-
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
-
-   if (!hWnd)
-   {
-      return FALSE;
-   }
-
-   ShowWindow(hWnd, nCmdShow);
-   UpdateWindow(hWnd);
-
-   return TRUE;
+	ticker++;		
 }
 
 
 // Draws block to bitmap at given location.
-void drawBlock(HBITMAP destination, int atX, int atY, FractalBlock block, bool debug = false)
+void __drawBlock(HBITMAP destination, int atX, int atY, FractalBlock block, bool debug = false)
 {
 	HDC newdc = CreateCompatibleDC(NULL);
 	SelectObject(newdc, destination);
@@ -226,79 +223,9 @@ void drawBlock(HBITMAP destination, int atX, int atY, FractalBlock block, bool d
 	DeleteDC(newdc);
 }
 
-// Draws fractal grid to a DIB then to device context.
-void renderFractalGrid(HBITMAP destination, RenderGrid *grid)
-{
-	drawRect(destination, Vector2d(0,0), Vector2d(VIEWPORT_WIDTH, VIEWPORT_HEIGHT), RGB(0, 0, 0));
-
-	int layer = (int)log2(viewport.scale);
-	TRACE("LAYER:" + intToStr(layer));
-	double startTime;
-
-	startTime = time();
-	renderGrid->prepare(layer + 1);
-	TRACE("Took " + floatToStr(time() - startTime) + " seconds to prep."+"["+intToStr(ticker)+"]");
-
-	renderGrid->targetDepth = layer;
-
-	startTime = time();
-	renderGrid->root->recursiveDraw();
-	TRACE("Took " + floatToStr(time() - startTime) + " seconds to draw." + "[" + intToStr(ticker) + "]");
-
-	/*
-	
-	// figure out what level we are at
-	
-	int layer = (int)1;
-	int layerSize = (int)std::pow(2, layer);
-
-	// make sure our fractal is all upto date.
-	renderGrid->prepare(layer + 1);
-
-	for (int blockY = 0; blockY < 8; blockY++) {
-		for (int blockX = 0; blockX < 8; blockX++) {
-			// fetch the block
-			auto location = Vector2d((blockX - (layerSize / 2)) / (float)layerSize * 4, (blockY - (layerSize / 2)) / (float)layerSize * 4);
-			
-			auto block = grid->getBlock(location, layer + 1);
-			if (block->getStatus() == rsRENDERED) {
-				FractalBlock data = block->data;
-				viewport.scale *= 32;
-				auto draw = viewport.toScreen(location);
-				viewport.scale /= 32;
-				//TRACE(location.toString());
-				drawBlock(destination, draw.x, draw.y, data, true);
-			}
-		}
-	}
-
-	*/
-
-	/*
-	// draw all blocks
-	int layer = 4;
-	int layerSize = (int)std::pow(2,layer);
-
-	// make sure our fractal is all upto date.
-	renderGrid->prepare(layer+1);
-
-	for (int blockY = 0; blockY < layerSize; blockY++) {
-		for (int blockX = 0; blockX < layerSize; blockX++) {
-			// fetch the block
-			auto location = Vector2d((blockX - (layerSize / 2))/(float)layerSize*4, (blockY - (layerSize / 2))/(float)layerSize*4);
-			TRACE(location.toString());
-			auto block = grid.getBlock(location, layer + 1);
-			if (block->getStatus() == rsRENDERED) {
-				FractalBlock data = block->data;
-				drawBlock(destination, blockX * 64, blockY * 64, data, true);
-			}
-		}
-	}
-	*/
-}
 
 // Renders fractal, if _hdc is supplied will be draw periodically to that device context.
-void renderFractal(HBITMAP destination, MandelbrotSolver solver, HDC _hdc = NULL)
+void __renderFractal(HBITMAP destination, MandelbrotSolver solver, HDC _hdc = NULL)
 {
 	
 	TRACE("Render command");
@@ -356,87 +283,4 @@ void renderFractal(HBITMAP destination, MandelbrotSolver solver, HDC _hdc = NULL
 	double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
 	TRACE(elapsed_secs);
 	
-}
-
-
-
-//
-//  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
-//
-//  PURPOSE:  Processes messages for the main window.
-//
-//  WM_COMMAND  - process the application menu
-//  WM_PAINT    - Paint the main window
-//  WM_DESTROY  - post a quit message and return
-//
-//
-LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    switch (message)
-    {
-    case WM_COMMAND:
-        {
-            int wmId = LOWORD(wParam);
-            // Parse the menu selections:
-            switch (wmId)
-            {
-            case IDM_ABOUT:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-                break;
-            case IDM_EXIT:
-                DestroyWindow(hWnd);
-                break;
-            default:
-                return DefWindowProc(hWnd, message, wParam, lParam);
-            }
-        }
-        break;
-    case WM_PAINT:
-        {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-
-			if (page == NULL) {
-				page = createDIB(hdc, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
-				viewport.target = page;
-			}
-
-			if (solver != NULL && dirty) 
-			{				
-				renderFractalGrid(page, renderGrid);
-				dirty = FALSE;
-			}
-
-			DrawBitmap(hdc, 5, 5, page, SRCCOPY);
-			
-            EndPaint(hWnd, &ps);
-        }
-        break;
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        break;
-    default:
-        return DefWindowProc(hWnd, message, wParam, lParam);
-    }
-    return 0;
-}
-
-// Message handler for about box.
-INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    UNREFERENCED_PARAMETER(lParam);
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        return (INT_PTR)TRUE;
-
-    case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, LOWORD(wParam));
-            return (INT_PTR)TRUE;
-        }
-        break;
-    }
-    return (INT_PTR)FALSE;
 }

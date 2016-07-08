@@ -1,7 +1,13 @@
 #include "stdafx.h"
 #include "helper.h"
+#include <iostream>
 #include <ctime>
 
+//
+// Collection of helpful routines.  Hopefuly as I move towards the sdl these will be come less necessary.
+//
+
+// Convert double to string.
 string floatToStr(double d)
 {
 	char buffer[50];
@@ -9,6 +15,7 @@ string floatToStr(double d)
 	return buffer;
 }
 
+// Convert integer to string.
 string intToStr(int i)
 {
 	char buffer[50];
@@ -16,44 +23,28 @@ string intToStr(int i)
 	return buffer;
 }
 
+// Write string to debug output.
 void TRACE(string str)
 {
 	str = str + "\n";
 	std::wstring stemp = std::wstring(str.begin(), str.end());
 	LPCWSTR sw = stemp.c_str();
 	OutputDebugString(sw);
+	std::cout << str;
 }
 
+// Write double to debug output.
 void TRACE(double d)
 {
 	TRACE(floatToStr(d));
 }
 
+// Write integer to debug output.
 void TRACE(int i)
 {
 	char buffer[50];
 	sprintf_s(buffer, "%d", i);
 	TRACE(buffer);
-}
-
-void TRACE(float* ar)
-{
-	int n = 64;
-	string str;
-	for (int i = 0; i < n; i++) {
-		str += floatToStr(ar[i]) + " ";
-	}
-	TRACE("[" + str + "]");
-}
-
-void TRACE(int* ar)
-{
-	int n = 64 * 64;
-	string str;
-	for (int i = 0; i < n; i++) {
-		str += intToStr(ar[i]) + " ";
-	}
-	TRACE("[" + str + "]");
 }
 
 /******************************************************************************
@@ -91,6 +82,7 @@ HBITMAP createDIB(HDC hdc, int width, int height)
 	return CreateCompatibleBitmap(hdc, width, height);
 }
 
+// Asserts condition is true, if it is not prints message and exits with a return value of 1
 void Assert(bool condition, string message)
 {
 	if (!(condition)) {

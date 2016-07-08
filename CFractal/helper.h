@@ -4,6 +4,17 @@
 
 using std::string;
 
+// Color
+struct Color
+{
+	int r;
+	int g;
+	int b;
+	int a;
+
+	Color(int r, int g, int b, int a = 255) { this->r = r; this->g = g; this->b = b; this->a = a; }
+};
+
 // Location in 2d space.
 struct Vector2d
 {

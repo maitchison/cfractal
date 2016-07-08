@@ -3,6 +3,7 @@
 #include <string>
 #include "Mandel.h"
 #include "helper.h"
+#include "glHelper.h";
 
 class RenderBlock;
 class RenderGrid;
@@ -153,6 +154,8 @@ public:
 	bool isTrivial = false;
 
 	FractalBlock data;
+
+	Texture texture;
 
 	RenderBlockStatus status;
 	int priority;
